@@ -95,6 +95,8 @@ void myKeyboard(unsigned char key, int x, int y)
     switch (key)
     {
     case 'r':
+        thetaX = thetaY = thetaZ = 0;
+        tx = ty = tz = 0;        
         break;
     case 'a':
         thetaX += 3;
