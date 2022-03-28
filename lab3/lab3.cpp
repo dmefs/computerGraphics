@@ -33,17 +33,25 @@ GLfloat rotMatrix_Z[] = {
     0.0, 0.0, 1.0, 0.0,
     0.0, 0.0, 0.0, 1.0};
 
-int x, y, z, tx, ty, tz, thetaX, thetaY, thetaZ;
+GLfloat scalMatrix[] = {
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.0, 0.0, 0.0, 1.0};
+
+int x, y, z, tx, ty, tz, thetaX, thetaY, thetaZ, sx, sy, sz;
 void SetupRC();
 void ChangeSize(int, int);
 void RenderScene(void);
 void myKeyboard(unsigned char key, int x, int y);
 void mySpecialKey(int key, int x, int y);
-void myTranslatef(int tx, int ty, int tz);
+void myTranslatef();
+void myScalingf();
 void myRotatef(enum MyAxis a);
 
 int main(int argc, char **argv)
 {
+    sx = sy = sz = 1;
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
     glutInitWindowSize(400, 400);
@@ -113,8 +121,10 @@ void RenderScene(void)
 
     // perform transformation for the cube
     glLoadIdentity();
+    // scaling
+    myScalingf();
     // glTranslatef(tx, ty, tz);
-    myTranslatef(tx, ty, tz);
+    myTranslatef();
     // glRotatef(thetaX, 1, 0, 0);
     myRotatef(x_axis);
     // glRotatef(thetaY, 0, 1, 0);
@@ -127,6 +137,9 @@ void RenderScene(void)
     glutSwapBuffers();
 }
 
+#define SCALE_UNIT 1
+#define ROTATION_UNIT 3
+
 void myKeyboard(unsigned char key, int x, int y)
 {
     switch (key)
@@ -136,22 +149,40 @@ void myKeyboard(unsigned char key, int x, int y)
         tx = ty = tz = 0;
         break;
     case 'a':
-        thetaX += 3;
+        thetaX += ROTATION_UNIT;
         break;
     case 'd':
-        thetaX -= 3;
+        thetaX -= ROTATION_UNIT;
         break;
     case 'w':
-        thetaY += 3;
+        thetaY += ROTATION_UNIT;
         break;
     case 's':
-        thetaY -= 3;
+        thetaY -= ROTATION_UNIT;
         break;
     case 'z':
-        thetaZ += 3;
+        thetaZ += ROTATION_UNIT;
         break;
     case 'x':
-        thetaZ -= 3;
+        thetaZ -= ROTATION_UNIT;
+        break;
+    case 'j':
+        sx += SCALE_UNIT;
+        break;
+    case 'k':
+        sy += SCALE_UNIT;
+        break;
+    case 'l':
+        sz += SCALE_UNIT;
+        break;
+    case 'u':
+        sx -= SCALE_UNIT;
+        break;
+    case 'i':
+        sy -= SCALE_UNIT;
+        break;
+    case 'o':
+        sz -= SCALE_UNIT;
         break;
     default:
         break;
@@ -192,7 +223,7 @@ static inline float getCos(float theta)
     return cos(theta * M_PI / 180.0);
 }
 
-void myTranslatef(int tx, int ty, int tz)
+void myTranslatef()
 {
     translateMatrix[12] = tx;
     translateMatrix[13] = ty;
@@ -232,4 +263,12 @@ void myRotatef(enum MyAxis a)
         std::cout << "error" << std::endl;
         break;
     }
+}
+
+void myScalingf()
+{
+    scalMatrix[0] = sx;
+    scalMatrix[5] = sy;
+    scalMatrix[10] = sz;
+    glMultMatrixf(scalMatrix);
 }
