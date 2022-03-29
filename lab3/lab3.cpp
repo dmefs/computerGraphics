@@ -39,7 +39,7 @@ GLfloat scalMatrix[] = {
     0.0, 0.0, 1.0, 0.0,
     0.0, 0.0, 0.0, 1.0};
 
-int x, y, z, tx, ty, tz, thetaX, thetaY, thetaZ, sx, sy, sz;
+GLfloat x, y, z, tx, ty, tz, thetaX, thetaY, thetaZ, sx, sy, sz;
 void SetupRC();
 void ChangeSize(int, int);
 void RenderScene(void);
@@ -137,7 +137,7 @@ void RenderScene(void)
     glutSwapBuffers();
 }
 
-#define SCALE_UNIT 1
+#define SCALE_UNIT 0.1
 #define ROTATION_UNIT 3
 
 void myKeyboard(unsigned char key, int x, int y)
