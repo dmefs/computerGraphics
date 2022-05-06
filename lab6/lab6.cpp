@@ -1,16 +1,21 @@
 #include <iostream>
 #include <cmath>
 #include <freeglut.h>
+#include "lab6.h"
 
 GLfloat mx, my;
 GLfloat grid_width, grid_height, left_edge, right_edge, top_edge, down_edge;
 GLint dimension = 10;
 
-void myDrawDot(GLint x, GLint y);
+
+void (*myDrawingLine)(GLint x0, GLint y0, GLint x1, GLint y1);
+void myDrawDot(GLint x, GLint y, GLfloat c);
 void SetupRC();
 void ChangeSize(int, int);
 void RenderScene(void);
-void myDrawingLine(GLint x0, GLint y0, GLint x1, GLint y1);
+void midpoint(GLint x0, GLint y0, GLint x1, GLint y1);
+void antiAliasing(GLint x0, GLint y0, GLint x1, GLint y1);
+void myDrawStraightLine(GLint x0, GLint y0, GLint x1, GLint y1);
 void myMouse(GLint button, GLint state, GLint x, GLint y);
 void Draw2DGrid();
 void menuSelect(int option);
@@ -21,6 +26,7 @@ void buildPopupMenu();
 int main(int argc, char **argv)
 {
     mx = 1;
+    myDrawingLine = midpoint;
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
     glutInitWindowSize(WINDOWS_HEIGHT, WINDOWS_WIDTH);
@@ -113,7 +119,8 @@ void myMouse(GLint button, GLint state, GLint x, GLint y)
         case 1:
             x2 = Dotx;
             y2 = Doty;
-            myDrawingLine(x1, y1, x2, y2);
+            (*myDrawingLine)(x1, y1, x2, y2);
+            myDrawStraightLine(x1, y1, x2, y2);
             break;
         default:
             std::cout << "Error: state out of 1." << std::endl;
@@ -122,9 +129,10 @@ void myMouse(GLint button, GLint state, GLint x, GLint y)
     mouseState = (mouseState + 1) % 2;
 }
 
-void myDrawingLine(GLint x0, GLint y0, GLint x1, GLint y1) 
+void midpoint(GLint x0, GLint y0, GLint x1, GLint y1) 
 {
-    GLint dx, sx, dy, sy, error, e2;
+    GLint dx, sx, dy, sy, error, e2, yi;
+    GLfloat f;
     dx = std::abs(x1 - x0);
     sx = x0 < x1 ? 1: -1;
     dy = -abs(y1 - y0);
@@ -132,7 +140,7 @@ void myDrawingLine(GLint x0, GLint y0, GLint x1, GLint y1)
     error = dx + dy;
 
     while (1) {
-        myDrawDot(x0, y0);
+        myDrawDot(x0, y0, 1.0f);
         if ((x0 == x1) && (y0 == y1))
             break;
         if ((e2 = 2 * error) >= dy) {
@@ -148,10 +156,10 @@ void myDrawingLine(GLint x0, GLint y0, GLint x1, GLint y1)
             y0 += sy;
         }
     }
-    myDrawDot(x1, y1);
+    myDrawDot(x1, y1, 1.0f);
 }
 
-void myDrawDot(GLint x, GLint y)
+void myDrawDot(GLint x, GLint y, GLfloat c)
 {
     x += dimension;
     y += dimension;
@@ -159,7 +167,7 @@ void myDrawDot(GLint x, GLint y)
     GLfloat grid_y = down_edge + y * grid_height;
     
     glBegin(GL_POLYGON);
-    glColor3f(1.0f, 1.0f, 0.0f); // White (RGB)
+    glColor3f(c, c, 0.0f); // White (RGB)
     glVertex3f(grid_x, grid_y, 0);
     glVertex3f(grid_x + grid_width, grid_y, 0);
     glVertex3f(grid_x + grid_width, grid_y + grid_height, 0);
@@ -207,7 +215,9 @@ void Draw2DGrid() {
 enum {
     di_10,
     di_15,
-    di_20
+    di_20,
+    midpoint_label,
+    antiAliasing_label
 };
 
 void menuSelect(int option)
@@ -216,21 +226,24 @@ void menuSelect(int option)
 	{
 	case di_10:
         dimension = 10;
-		glutPostRedisplay();
 		break;
 	case di_15:
         dimension = 15;
-		glutPostRedisplay();
 		break;
 	case di_20:
         dimension = 20;
-		glutPostRedisplay();
+        break;
+    case midpoint_label:
+        myDrawingLine = midpoint;
+        break;
+    case antiAliasing_label:
+        myDrawingLine = antiAliasing;
         break;
 	default:
         dimension = 10;
-		glutPostRedisplay();
 		break;
 	}
+    glutPostRedisplay();
 }
 
 void buildPopupMenu()
@@ -240,5 +253,92 @@ void buildPopupMenu()
     glutAddMenuEntry("10",di_10);
     glutAddMenuEntry("15",di_15);
     glutAddMenuEntry("20",di_20);
+    glutAddMenuEntry("midpoint",midpoint_label);
+    glutAddMenuEntry("antiAliasing",antiAliasing_label);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
+}
+
+
+void antiAliasing(GLint x0, GLint y0, GLint x1, GLint y1)
+{
+    bool steep = abs(y1 - y0) > abs(x1 - x0);
+    if (steep) {
+        std::swap(x0, y0);
+        std::swap(x1, y1);
+    }
+    if (x0 > x1) {
+        std::swap(x0, x1);
+        std::swap(y0, y1);
+    }
+
+    GLfloat dx, dy, gradient, xgap, intery;
+    GLint xend, yend, xpxl1, ypxl1, xpxl2, ypxl2;
+    dx = x1 - x0;
+    dy = y1 - y0;
+
+    if (dx <= 0.01)
+        gradient = 1.0;
+    else
+        gradient = dy / dx;
+    
+    // handle first endpoint
+    xend = x0;
+    yend = y0;
+    xgap = myrfpart((float)x0 + 0.5);
+    xpxl1 = xend;
+    ypxl1 = myipart(yend);
+    if (steep) {
+        myDrawDot(ypxl1, xpxl1, myrfpart(yend) * xgap);
+        myDrawDot(ypxl1+1, xpxl1, myfpart(yend) * xgap);
+    } else {
+        myDrawDot(xpxl1, ypxl1, myrfpart(yend) * xgap);
+        myDrawDot(xpxl1+1, ypxl1, myfpart(yend) * xgap);
+    }
+    intery = (float)yend + gradient;
+    // handle second endpoint
+    xend = x1;
+    yend = y1;
+    xgap = myrfpart((float)x1 + 0.5);
+    xpxl2 = xend;
+    ypxl2 = myipart(yend);
+    if (steep) {
+        myDrawDot(ypxl2, xpxl2, myrfpart(yend) * xgap);
+        myDrawDot(ypxl2+1, xpxl2, myfpart(yend) * xgap);
+    } else {
+        myDrawDot(xpxl2, ypxl2, myrfpart(yend) * xgap);
+        myDrawDot(xpxl2+1, ypxl2, myfpart(yend) * xgap);
+    }
+
+    if (steep) {
+        for (int x = xpxl1 + 1; x <= (xpxl2 - 1); x+= 1) {
+            myDrawDot((int)intery, x, myrfpart(intery));
+            myDrawDot(((int)intery) + 1, x, myfpart(intery));
+            intery += gradient;
+        }
+    } else {
+        for (int x = xpxl1 + 1; x <= (xpxl2 - 1); x+= 1) {
+            myDrawDot(x, (int)intery, myrfpart(intery));
+            myDrawDot(x, ((int)intery) + 1, myfpart(intery));
+            intery += gradient;
+        }
+    }
+}
+
+void myDrawStraightLine(GLint x0, GLint y0, GLint x1, GLint y1)
+{
+    x0 += dimension;
+    y0 += dimension;
+    x1 += dimension;
+    y1 += dimension;
+    GLfloat grid_x0 = left_edge + ((GLfloat)x0 + 0.5) * grid_width;
+    GLfloat grid_y0 = down_edge + ((GLfloat)y0 + 0.5) * grid_height;
+    GLfloat grid_x1 = left_edge + ((GLfloat)x1 + 0.5) * grid_width;
+    GLfloat grid_y1 = down_edge + ((GLfloat)y1 + 0.5) * grid_height;
+    
+    glBegin(GL_LINES);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(grid_x1, grid_y1, 0);
+    glVertex3f(grid_x0, grid_y0, 0);
+    glEnd();
+    glFlush();
 }
