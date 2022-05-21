@@ -9,8 +9,10 @@ GLfloat grid_width, grid_height, left_edge, right_edge, top_edge, down_edge;
 GLint dimension = 10;
 std::vector<std::pair<GLfloat, GLfloat>> vertexs;
 
+void RasterizeSelect(int option);
 int jordanInside(int x, int y);
 void DrawPolygon();
+void (*MyRasterize)();
 void MenuSelect(int option);
 void GridSelect(int option);
 void myDrawDot(GLint x, GLint y, GLfloat c);
@@ -18,6 +20,7 @@ void SetupRC();
 void ChangeSize(int, int);
 void RenderScene(void);
 void midpoint(GLint x0, GLint y0, GLint x1, GLint y1);
+void midpoint();
 void myMouse(GLint button, GLint state, GLint x, GLint y);
 void Draw2DGrid();
 void GridSelect(int option);
@@ -62,6 +65,7 @@ void SetupRC()
     // Turn on color tracking
     glEnable(GL_COLOR_MATERIAL);
     glEnable(GL_DEPTH_TEST);
+    MyRasterize = midpoint;
 }
 
 void ChangeSize(int w, int h)
@@ -78,6 +82,7 @@ void ChangeSize(int w, int h)
 
 void RenderScene(void)
 {
+    vertexs.clear();
     glClearColor(0, 0, 0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glMatrixMode(GL_MODELVIEW);
@@ -234,41 +239,60 @@ void GridSelect(int option)
         dimension = 10;
 		break;
 	}
-    vertexs.clear();
     glutPostRedisplay();
 }
 
 enum {
     draw_op,
-    reset_op
+    reset_op,
+    lines_op,
+    polygon_op
 };
 
 void buildPopupMenu()
 {
-	int menu, grid_id;
+	int menu, grid_id, rasterize_id;
 	grid_id = glutCreateMenu(GridSelect);
     glutAddMenuEntry("10",di_10);
     glutAddMenuEntry("15",di_15);
     glutAddMenuEntry("20",di_20);
+	rasterize_id = glutCreateMenu(RasterizeSelect);
+    glutAddMenuEntry("lines", lines_op);
+    glutAddMenuEntry("polygon", polygon_op);
     menu = glutCreateMenu(MenuSelect);
     glutAddSubMenu("Grid size", grid_id);
+    glutAddSubMenu("Rasterization mode", rasterize_id);
     glutAddMenuEntry("Draw",draw_op);
     glutAddMenuEntry("Reset",reset_op);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
 
+void RasterizeSelect(int option)
+{
+	switch(option)
+	{
+	case lines_op:
+        MyRasterize = midpoint;
+        break;
+    case polygon_op:
+        MyRasterize = DrawPolygon;
+        break;
+	default:
+        MyRasterize = midpoint;
+		break;
+	}
+    glutPostRedisplay();
+}
 
 void MenuSelect(int option)
 {
 	switch(option)
 	{
 	case draw_op:
-        midpoint();
-        DrawPolygon();
+        MyRasterize();
         break;
     case reset_op:
         dimension = 10;
-        vertexs.clear();
         glutPostRedisplay();
         break;
 	default:
