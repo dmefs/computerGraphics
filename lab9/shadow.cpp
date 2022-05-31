@@ -434,25 +434,22 @@ void myKeyboard(unsigned char key, int x, int y) {
   switch (key) {
   case '1':
     lightPos = lightPos1;
-    std::cout << "keyboard 1" << std::endl;
     break;
   case '2':
     lightPos = lightPos2;
-    std::cout << "keyboard 2" << std::endl;
     break;
   case '3':
     lightPos = lightPos3;
-    std::cout << "keyboard 3" << std::endl;
     break;
   case '4':
     lightPos = lightPos4;
-    std::cout << "keyboard 4" << std::endl;
+    break;
+  case 'r':
     break;
   default:
-    lightPos = lightPos1;
-    std::cout << "keyboard default" << std::endl;
-    break;
+    return;
   }
+  std::fill_n(shadowMat, sizeof(shadowMat), 0);
   SetupRC();
   glutPostRedisplay();
 }
